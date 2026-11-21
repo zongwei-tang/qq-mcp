@@ -11,7 +11,7 @@ h1{font-size:20px;margin:0 0 6px}p{color:#666;font-size:14px;margin:6px 0}img{wi
 @media (prefers-color-scheme:dark){body{background:#15171c;color:#eee}.card{background:#20232a}p{color:#aaa}}
 </style></head><body><div class="card"><h1>QQ MCP 登录</h1><p id="s">正在读取状态…</p><div id="q"></div></div>
 <script>
-const base = location.pathname.replace(/\/$/, '');
+const base = location.pathname.replace(/[/]$/, '');
 const s = document.getElementById('s'), q = document.getElementById('q');
 let img = null, loading = false, lastImg = 0, lastRefresh = 0;
 // load the QR screenshot without ever replacing an image that is still loading (each one takes a few seconds)

@@ -156,3 +156,11 @@ test('get_events filters by type', async () => {
   assert.equal(r.events.length, 1);
   assert.equal(r.events[0].type, 'notice.group_recall');
 });
+
+test('login page script is valid JavaScript', async () => {
+  const { loginPages } = await import('../remote/login-page.js');
+  let out = '';
+  await loginPages('/', { url: '/' } as any, { writeHead() {}, end(b: string) { out = b; } } as any);
+  const js = /<script>([\s\S]*)<\/script>/.exec(out)![1];
+  assert.doesNotThrow(() => new Function(js));
+});
