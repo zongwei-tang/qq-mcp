@@ -58,11 +58,16 @@ async function pixel(x: number, y: number): Promise<[number, number, number] | u
   } catch { return undefined; }
 }
 
-const isLoginWindow = (w: Geo) => w.w >= 280 && w.w <= 420 && w.h >= 400 && w.h <= 560;
+/** QQ has two login layouts: the small 320x460 one (QR, or the remembered account's 登录 button) and a wide
+ * ~640x424 one (账密登录 on the left, QR on the right) shown when the saved session was rejected. */
+const isSmallLogin = (w: Geo) => w.w >= 280 && w.w <= 420 && w.h >= 400 && w.h <= 560;
+const isWideLogin = (w: Geo) => w.w >= 560 && w.w <= 760 && w.h >= 380 && w.h <= 480;
+const isLoginWindow = (w: Geo) => isSmallLogin(w) || isWideLogin(w);
 const isQqBlue = (p?: number[]) => !!p && p[0] < 40 && p[1] > 120 && p[1] < 190 && p[2] > 220;
 
 /** The remembered-account screen has a wide blue "登录" button at ~71% of the window height. */
 async function quickLoginButton(w: Geo): Promise<{ x: number; y: number } | undefined> {
+  if (!isSmallLogin(w)) return undefined; // the wide layout's button needs a password
   const y = w.y + Math.round(w.h * 0.713);
   const xs = [0.19, 0.5, 0.81].map((f) => w.x + Math.round(w.w * f));
   const px = await Promise.all(xs.map((x) => pixel(x, y)));

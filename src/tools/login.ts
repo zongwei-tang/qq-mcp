@@ -68,8 +68,11 @@ export async function status() {
 
 /** Click the "刷新" button of an expired QR code (harmless on a live QR). Only on the small login window. */
 async function refreshQr(win: Geo) {
-  if (win.w > 420 || win.h > 560) return; // not the login window
-  await run('xdotool', ['mousemove', String(win.x + Math.round(win.w / 2)), String(win.y + Math.round(win.h * 0.61)), 'click', '1'], { env: env() }).catch(() => {});
+  let x: number, y: number;
+  if (win.w <= 420 && win.h <= 560) { x = win.x + Math.round(win.w / 2); y = win.y + Math.round(win.h * 0.61); } // small login window: QR / 刷新 in the middle
+  else if (win.w >= 560 && win.w <= 760 && win.h >= 380 && win.h <= 480) { x = win.x + Math.round(win.w * 0.79); y = win.y + Math.round(win.h * 0.5); } // wide 账密+扫码 window: QR on the right
+  else return; // not a login window
+  await run('xdotool', ['mousemove', String(x), String(y), 'click', '1'], { env: env() }).catch(() => {});
   await new Promise((r) => setTimeout(r, 1500));
 }
 
