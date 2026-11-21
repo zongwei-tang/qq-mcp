@@ -13,6 +13,8 @@ docker run -d --name qq-mcp -e MCP_AUTH_TOKEN=$(openssl rand -hex 24) -v qq-data
 
 MCP endpoint (Streamable HTTP): `http://host:8000/mcp/<MCP_AUTH_TOKEN>` (or `/mcp` with `Authorization: Bearer <token>`).
 
+Staying logged in: a watchdog checks every 30s. It clicks 登录 again for the remembered account, dismisses 下线/登录失效 pop-ups, restarts QQ if it looks logged in but the API died, and only when a QR scan is truly required it sends `NOTIFY_WEBHOOK` the `/login/<token>` link.
+
 Log in: call `qq_login` — it returns a screenshot of the QQ login window with a QR code; scan it with the QQ phone app. The session is kept in `/data`.
 
 ## Railway
@@ -24,6 +26,8 @@ Deploy this repo (Dockerfile build), add a volume at `/data`, set `MCP_AUTH_TOKE
 | Var | Meaning |
 | --- | --- |
 | `MCP_AUTH_TOKEN` | required for `serve` |
+| `NOTIFY_WEBHOOK` | where to send "needs a QR scan" alerts: a Discord webhook, any URL containing `{text}` (Bark, Server酱 …), or any URL that accepts a JSON POST |
+| `QQ_WATCHDOG_INTERVAL` | seconds between login checks (default 30; `QQ_WATCHDOG=off` disables) |
 | `QQ_TOOLSETS` | only these categories, e.g. `chat,events,message,qzone,qzone_web` |
 | `QQ_READ_ONLY` | `1` = only read-only tools |
 | `QQ_DISABLED_TOOLS` | comma-separated tool names to hide |

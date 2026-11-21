@@ -11,10 +11,10 @@ import { defineTool, s } from './registry.js';
 const run = promisify(execFile);
 const env = () => ({ ...process.env, DISPLAY: settings.display });
 
-interface Geo { x: number; y: number; w: number; h: number }
+export interface Geo { x: number; y: number; w: number; h: number }
 
 /** Geometry of the biggest visible QQ window (the login window or main window). */
-async function qqWindow(): Promise<Geo | undefined> {
+export async function qqWindow(): Promise<Geo | undefined> {
   try {
     const { stdout } = await run('xdotool', ['search', '--onlyvisible', '--class', 'qq'], { env: env() });
     let best: Geo | undefined;
@@ -37,7 +37,7 @@ async function screenSize(): Promise<{ w: number; h: number }> {
   return { w: 1920, h: 1080 };
 }
 
-async function screenshot(region?: Geo): Promise<{ data: string; mimeType: string; region: Geo }> {
+export async function screenshot(region?: Geo): Promise<{ data: string; mimeType: string; region: Geo }> {
   const scr = await screenSize();
   const r = region ?? { x: 0, y: 0, w: scr.w, h: scr.h };
   // clamp to the screen
@@ -52,12 +52,12 @@ async function screenshot(region?: Geo): Promise<{ data: string; mimeType: strin
 }
 
 /** PIDs of QQ main processes (not Electron helpers). */
-async function qqPids(): Promise<number[]> {
+export async function qqPids(): Promise<number[]> {
   try { const { stdout } = await run('pgrep', ['-f', '^/opt/QQ/qq( --no-sandbox| --disable-gpu)*$']); return stdout.split(/\s+/).filter(Boolean).map(Number); } catch { return []; }
 }
-const qqRunning = async () => (await qqPids()).length > 0;
+export const qqRunning = async () => (await qqPids()).length > 0;
 
-async function status() {
+export async function status() {
   try {
     await onebot.ready(3000);
     const me = await onebot.call<any>('get_login_info', {}, 8000);
@@ -85,6 +85,17 @@ export async function loginSnapshot(refresh: boolean): Promise<{ status: any; pn
 }
 
 export function registerLoginTools() {
+  defineTool({
+    name: 'qq_watchdog', category: 'login', readOnly: true,
+    description: 'State of the login watchdog that keeps QQ logged in automatically (re-clicks 登录 for the remembered account, dismisses 下线 pop-ups, restarts a stuck client, notifies when a QR scan is really needed). check_now=true runs a check immediately.',
+    inputSchema: s.obj({ check_now: s.bool('Run one check now', { default: false }) }),
+    handler: async ({ check_now = false }) => {
+      const { watchdogState, checkOnce, loginPageUrl } = await import('../watchdog.js');
+      if (check_now) await checkOnce();
+      return { ...watchdogState, notify_configured: !!process.env.NOTIFY_WEBHOOK, login_page: loginPageUrl() ? 'set (see /login/<token>)' : 'unknown' };
+    },
+  });
+
   defineTool({
     name: 'qq_login_status', category: 'login', readOnly: true,
     description: 'Is QQ logged in and connected? Returns the account if so.',

@@ -81,6 +81,8 @@ async function cli(argv: string[]) {
     console.log('login page: /login/<MCP_AUTH_TOKEN>');
     console.log(`qq-mcp ${VERSION} listening on http://${host}:${port}/mcp (${tools.filter(enabled).length} tools)`);
     onebot.start();
+    const { startWatchdog } = await import('./watchdog.js');
+    startWatchdog();
     return;
   }
   if (cmd === 'tools') {
