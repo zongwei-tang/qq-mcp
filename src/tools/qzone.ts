@@ -1,7 +1,6 @@
 /* QQ 空间 extras on top of the runtime's qzone actions: visitors, 留言板, personal albums, like lists, forwards, comment deletion… */
-import { myUin, qzone, qzoneAuth } from '../qzone/web.js';
+import { myUin, qzone } from '../qzone/web.js';
 import { fmtTime } from '../format.js';
-import { loadBytes } from '../media.js';
 import { defineTool, s } from './registry.js';
 
 const CS = { inCharset: 'utf-8', outCharset: 'utf-8' };
@@ -124,25 +123,39 @@ export function registerQzoneTools() {
 
 
   defineTool({
-    name: 'qzone_upload_photo', category: 'qzone_web',
-    description: 'Upload a picture (URL, server path or base64) into one of your 空间相册 albums.',
-    inputSchema: s.obj({ album_id: s.str('Target album id'), image: s.str('URL / path / base64'), desc: s.str('Photo description') }, ['album_id', 'image']),
-    handler: async ({ album_id, image, desc = '' }) => {
-      const a = await qzoneAuth();
-      const jar = Object.fromEntries(a.cookie.split(/;\s*/).map((kv) => { const i = kv.indexOf('='); return [kv.slice(0, i), kv.slice(i + 1)]; }));
-      const b64 = (await loadBytes(image)).toString('base64');
-      const d = await qzone({
-        url: 'https://up.qzone.qq.com/cgi-bin/upload/cgi_upload_image',
-        form: {
-          filename: 'filename', zzpanelkey: '', uploadtype: '1', albumtype: '1', exttype: '0', skey: jar.skey, zzpaneluin: a.uin, p_uin: a.uin, uin: a.uin, p_skey: jar.p_skey,
-          output_type: 'jsonhtml', qzonetoken: '', refer: 'album', charset: 'utf-8', output_charset: 'utf-8', upload_hd: '1', hd_width: '2048', hd_height: '10000', hd_quality: '96',
-          backUrls: 'http://upbak.photo.qzone.qq.com/cgi-bin/upload/cgi_upload_image', url: `https://up.qzone.qq.com/cgi-bin/upload/cgi_upload_image?g_tk=${a.gtk}`,
-          base64: '1', jsonhtml_callback: 'callback', picfile: b64, albumid: album_id, desc, qzreferrer: ref(a.uin, '/main'),
-        },
-      });
-      const data = d.data ?? d;
-      if (!data.lloc && !data.url) throw new Error(`upload failed: ${JSON.stringify(d).slice(0, 300)}`);
-      return { uploaded: true, album_id: data.albumid ?? album_id, photo_id: data.lloc, url: data.url, width: data.width, height: data.height };
+    name: 'qzone_delete_photos', category: 'qzone_web', destructive: true,
+    description: 'Delete photos from one of your 空间相册 albums (photo ids from qzone_album_photos).',
+    inputSchema: s.obj({ album_id: s.str('Album id'), photo_ids: s.arr({ type: 'string' }, 'Photo ids (lloc)') }, ['album_id', 'photo_ids']),
+    handler: async ({ album_id, photo_ids }) => {
+      const me = await myUin();
+      const want = new Set<string>(photo_ids);
+      const found: any[] = []; let topic: any; let start = 0;
+      while (found.length < want.size && start < 5000) { // find sloc + album privacy for each photo
+        const d = await qzone({ url: 'photo.qzone.qq.com/fcgi-bin/cgi_list_photo', query: { mode: 0, idcNum: 4, hostUin: me, topicId: album_id, noTopic: 0, uin: me, pageStart: start, pageNum: 100, skipCmtCount: 0, singleurl: 1, batchId: '', notice: 0, appid: 4, ...CS, source: 'qzone', plat: 'qzone', outstyle: 'json', format: 'jsonp', json_esc: 1 } });
+        topic = d.data?.topic ?? topic;
+        const list = d.data?.photoList ?? [];
+        found.push(...list.filter((p: any) => want.has(p.lloc)));
+        if (list.length < 100) break;
+        start += 100;
+      }
+      if (!found.length) throw new Error('none of those photo ids are in that album');
+      const priv = Number(topic?.priv) || 1;
+      const d = await qzone({ url: 'https://user.qzone.qq.com/proxy/domain/photo.qzone.qq.com/cgi-bin/common/cgi_delpic_multi_v2', form: {
+        qzreferrer: ref(me), albumid: album_id, nvip: 1, bgid: 'undefined', tpid: 'undefined', priv, albumname: topic?.name ?? 'undefined',
+        codelist: found.map((p) => `${p.lloc}|53|0|0||${p.sloc || p.lloc}|${priv}|0`).join('_'), ismultiup: '0'.repeat(found.length), resetcover: 1, newcover: '', uin: me, hostUin: me, plat: 'qzone', source: 'qzone', ...CS,
+      } });
+      return { deleted: (d.data?.succ ?? []).map((x: any) => x.id), not_found: photo_ids.filter((id: string) => !found.some((p) => p.lloc === id)) };
+    },
+  });
+
+  defineTool({
+    name: 'qzone_delete_album', category: 'qzone_web', destructive: true,
+    description: 'Delete one of your personal 空间相册 albums together with its photos.',
+    inputSchema: s.obj({ album_id: s.str('Album id from qzone_albums') }, ['album_id']),
+    handler: async ({ album_id }) => {
+      const me = await myUin();
+      await qzone({ url: 'https://user.qzone.qq.com/proxy/domain/photo.qzone.qq.com/cgi-bin/common/cgi_del_album_v2', form: { qzreferrer: ref(me), uin: me, hostUin: me, plat: 'qzone', source: 'qzone', appid: 4, notice: 0, format: 'fs', callbackFun: '_Callback', ...CS, albumid: album_id } });
+      return { deleted: true };
     },
   });
 
