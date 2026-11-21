@@ -1,4 +1,5 @@
 /* One MCP tool per OneBot action exposed by the QQ runtime, generated from its self-documented action catalog. */
+import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { onebot } from '../onebot.js';
 import { defineTool, type JsonSchema } from './registry.js';
@@ -71,8 +72,13 @@ function describe(a: ActionDoc): string {
   return parts.join(' ').replace(/\s+/g, ' ').slice(0, 1200);
 }
 
+/**
+ * The action catalog comes from SnowLuma's own npm package (@snowluma/mcp, installed as a dependency),
+ * so it always matches the runtime and is not copied into this repo. QQ_CATALOG_FILE can point to a JSON array instead.
+ */
 export function loadCatalog(): ActionDoc[] {
-  return require('../catalog/actions.json') as ActionDoc[];
+  if (process.env.QQ_CATALOG_FILE) return JSON.parse(readFileSync(process.env.QQ_CATALOG_FILE, 'utf8')) as ActionDoc[];
+  return require('@snowluma/mcp/dist/generated/catalog.js').ACTIONS as ActionDoc[];
 }
 
 /** Feed actions return each item's raw rendered HTML (often 50k+ chars) next to structured fields: drop it by default. */
