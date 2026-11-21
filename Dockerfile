@@ -42,6 +42,5 @@ COPY docker/supervisord.conf /etc/supervisord.conf
 COPY docker/start.sh /start.sh
 RUN chmod +x /start.sh && chown -R qq:qq /app /opt/QQ
 
-VOLUME ["/data"]
 EXPOSE 8000
 CMD ["/start.sh"]
