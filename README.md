@@ -1,11 +1,10 @@
 # qq-mcp
 
+**简体中文** | [English](README.en.md)
+
 让 AI 用**你自己的 QQ 号**做事的 MCP 服务器：读消息、发消息、管群、操作 QQ 空间。260 个工具，一个 Docker 容器，能直接部署到云上（Streamable HTTP），掉线会自动重新登录。
 
-An MCP server that drives your own QQ account — messages, groups, files and QQ空间 (Qzone) — 260 tools, one container, cloud-ready over Streamable HTTP, with automatic re-login.
-
 > ⚠️ 用自动化程序操作个人 QQ 违反腾讯用户协议，账号可能被限制。风险自负，请只用于自己的账号。
-> Automating a personal QQ account is against Tencent's terms and can get it restricted. Use at your own risk, on your own account only.
 
 ## 能做什么
 
@@ -45,8 +44,10 @@ MCP 地址（Streamable HTTP）：`http://<host>:8000/mcp/<MCP_AUTH_TOKEN>`，�
 
 ### Railway
 
-从这个仓库部署（Dockerfile），挂一个卷到 `/data`，设置 `MCP_AUTH_TOKEN`（至少 24 位随机字符），生成域名即可。`railway.json` 已配置健康检查。
-提示：一个 QQ 客户端约占 1GB 内存。
+从你自己的仓库副本部署（Dockerfile），挂一个卷到 `/data`，设置 `MCP_AUTH_TOKEN`（至少 24 位随机字符），生成域名即可。`railway.json` 已配置健康检查。
+
+- 一个 QQ 客户端约占 1GB 内存。
+- 请从**私有** fork 部署：Railway 的 GitHub 集成会把部署记录和提交状态（项目/服务 ID、控制台链接）写回所连接的仓库。
 
 ### QQ 客户端来源
 
