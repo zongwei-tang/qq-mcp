@@ -37,7 +37,7 @@ const want = { networks: { httpServers: [http], httpClients: [], wsServers: [ws]
 for (const f of ['onebot.json', ...fs.readdirSync(dir).filter((n) => /^onebot_\d+\.json$/.test(n))]) {
   const p = path.join(dir, f);
   let cur = {}; try { cur = JSON.parse(fs.readFileSync(p, 'utf8')); } catch {}
-  const next = { ...cur, networks: { ...(cur.networks || {}), httpServers: [http], wsServers: [ws] } };
+  const next = { ...cur, networks: { ...(cur.networks || {}), httpServers: [http], wsServers: [ws] }, historySync: { enabled: true } };
   if (!cur.networks) Object.assign(next, want);
   fs.writeFileSync(p, JSON.stringify(next, null, 2));
 }

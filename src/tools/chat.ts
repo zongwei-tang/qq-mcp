@@ -71,7 +71,7 @@ export function registerChatTools() {
 
   defineTool({
     name: 'read_chat', category: 'chat', readOnly: true,
-    description: 'Read the latest messages of a private or group chat as readable lines (oldest first). Page back with before_message_id = the oldest message_id you got. Marks the chat as read for get_unread.',
+    description: 'Read the latest messages of a private or group chat as readable lines (oldest first). Page back with before_message_id = the oldest message_id you got. Marks the chat as read for get_unread. Note: older server history is reachable once the chat has had at least one message since QQ logged in on the server; everything seen since then is kept.',
     inputSchema: s.obj({ target: TARGET, count: s.int('How many messages (max 200)', { default: 30 }), before_message_id: s.int('Return messages older than this message_id'), mark_read_on_qq: s.bool('Also clear the unread badge in QQ itself', { default: false }) }, ['target']),
     handler: async ({ target, count = 30, before_message_id, mark_read_on_qq = false }) => {
       const t = await resolveTarget(target);

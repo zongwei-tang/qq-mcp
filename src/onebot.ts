@@ -68,7 +68,16 @@ class OneBotClient extends EventEmitter {
     });
   }
 
+  private recentKeys = new Set<string>();
+
   private pushEvent(e: any) {
+    // the runtime can report a self-sent message twice; drop exact repeats
+    if (e.message_id !== undefined && (e.post_type === 'message' || e.post_type === 'message_sent')) {
+      const k = `${e.post_type}:${e.message_id}:${e.time}`;
+      if (this.recentKeys.has(k)) return;
+      this.recentKeys.add(k);
+      if (this.recentKeys.size > 2000) this.recentKeys.delete(this.recentKeys.values().next().value as string);
+    }
     if (e.post_type === 'meta_event') {
       if (e.self_id) this.selfId = e.self_id;
       if (e.meta_event_type === 'heartbeat') return; // noise
