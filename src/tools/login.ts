@@ -51,9 +51,11 @@ async function screenshot(region?: Geo): Promise<{ data: string; mimeType: strin
   } finally { fs.promises.rm(dir, { recursive: true, force: true }).catch(() => {}); }
 }
 
-async function qqRunning(): Promise<boolean> {
-  try { const { stdout } = await run('pgrep', ['-f', '/opt/QQ/qq']); return !!stdout.trim(); } catch { return false; }
+/** PIDs of QQ main processes (not Electron helpers). */
+async function qqPids(): Promise<number[]> {
+  try { const { stdout } = await run('pgrep', ['-f', '^/opt/QQ/qq( --no-sandbox| --disable-gpu)*$']); return stdout.split(/\s+/).filter(Boolean).map(Number); } catch { return []; }
 }
+const qqRunning = async () => (await qqPids()).length > 0;
 
 async function status() {
   try {
@@ -134,9 +136,15 @@ export function registerLoginTools() {
     description: 'Restart the QQ desktop client (use when it is stuck, crashed, or to get a fresh login QR code). Messages cannot be sent for ~20s while it restarts.',
     inputSchema: s.obj({}),
     handler: async () => {
-      const [cmd, ...args] = settings.restartCmd.split(/\s+/);
-      const { stdout, stderr } = await run(cmd, args).catch((e) => ({ stdout: '', stderr: String(e.message) }));
-      return { restarted: !stderr || /started/.test(stdout), output: (stdout + stderr).trim().slice(0, 500), next: 'Wait ~15s, then call qq_login_status / qq_login.' };
+      if (settings.restartCmd) {
+        const [cmd, ...args] = settings.restartCmd.split(/\s+/);
+        const { stdout, stderr } = await run(cmd, args).catch((e) => ({ stdout: '', stderr: String(e.message) }));
+        return { restarted: !stderr, output: (stdout + stderr).trim().slice(0, 500), next: 'Wait ~15s, then call qq_login_status / qq_login.' };
+      }
+      const pids = await qqPids();
+      if (!pids.length) return { restarted: false, message: 'QQ is not running; the launcher should start it within a few seconds. Call qq_login again shortly.' };
+      for (const p of pids) { try { process.kill(p, 'SIGTERM'); } catch { /* gone */ } }
+      return { restarted: true, stopped_pids: pids, next: 'QQ restarts automatically in a few seconds. Wait ~15s, then call qq_login_status / qq_login.' };
     },
   });
 }

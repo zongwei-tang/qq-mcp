@@ -47,7 +47,7 @@ r.webuiPort = Number(process.env.SNOWLUMA_WEBUI_PORT || 5099);
 fs.writeFileSync(rt, JSON.stringify(r, null, 2));
 NODE
 
-chown -R qq:qq "$DATA_DIR" /app "$XDG_RUNTIME_DIR" 2>/dev/null || true
+chown -R qq:qq "$DATA_DIR" "$XDG_RUNTIME_DIR" 2>/dev/null || true; chown -h qq:qq /app/.config /app/.local /app/.local/share 2>/dev/null || true
 chmod 700 "$XDG_RUNTIME_DIR"
 chmod 1777 /tmp /tmp/.X11-unix || true
 rm -f "/tmp/.X${DISPLAY_NUM}-lock" "/tmp/.X11-unix/X${DISPLAY_NUM}"

@@ -14,8 +14,8 @@ export const settings = {
   actionTimeout: Number(env.QQ_ACTION_TIMEOUT_MS || 60_000),
   /** X display the QQ client draws on (for login screenshots / clicks). */
   display: env.QQ_DISPLAY || env.DISPLAY || ':1',
-  /** Command that restarts the QQ client (container default uses supervisord). */
-  restartCmd: env.QQ_RESTART_CMD || 'supervisorctl -c /etc/supervisord.conf restart qq',
+  /** Optional command that restarts the QQ client. Default: stop the QQ main process; the launcher starts it again. */
+  restartCmd: env.QQ_RESTART_CMD || '',
   home: env.QQ_MCP_HOME || path.join(os.homedir(), '.qq-mcp'),
   downloadDir: env.QQ_DOWNLOAD_DIR || path.join(env.QQ_MCP_HOME || path.join(os.homedir(), '.qq-mcp'), 'downloads'),
   /** Only expose read-only tools. */
