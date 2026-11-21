@@ -4,3 +4,7 @@ dist
 .env
 .live.mjs
 login/
+.t.sh
+.probe.mjs
+.probe2.mjs
+.probe3.mjs

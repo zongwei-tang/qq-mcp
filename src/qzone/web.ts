@@ -11,6 +11,12 @@ export function gtk(skey: string): string {
   return String(h & 0x7fffffff);
 }
 
+/** Use a cookie string directly (tests / probing). */
+export function setQzoneCookie(cookie: string) {
+  const jar = Object.fromEntries(cookie.split(/;\s*/).filter(Boolean).map((kv) => { const i = kv.indexOf('='); return [kv.slice(0, i), kv.slice(i + 1)]; }));
+  cache = { at: Date.now() + 1e12, cookie, uin: String(jar.uin || jar.p_uin).replace(/^o0*/, ''), gtk: gtk(jar.p_skey || jar.skey) };
+}
+
 export async function qzoneAuth(refresh = false) {
   if (!refresh && cache && Date.now() - cache.at < 20 * 60_000) return cache;
   const r = await onebot.call<{ cookies: string }>('get_cookies', { domain: 'qzone.qq.com' });
@@ -73,6 +79,10 @@ export async function qzone(req: QzReq, retried = false): Promise<any> {
   if (code !== undefined && code !== 0) {
     const msg = data.message || data.msg || data.subcode || '';
     throw new Error(`Qzone error ${code}${msg ? `: ${msg}` : ''} (${u.pathname})`);
+  }
+  // some CGIs (uploads) report failures one level down: {"data":{"ret":-445,"msg":"…"}}
+  if (data?.data && typeof data.data.ret === 'number' && data.data.ret < 0) {
+    throw new Error(`Qzone error ${data.data.ret}${data.data.msg ? `: ${data.data.msg}` : ''} (${u.pathname})`);
   }
   return data;
 }

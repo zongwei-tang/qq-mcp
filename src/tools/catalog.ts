@@ -75,18 +75,32 @@ export function loadCatalog(): ActionDoc[] {
   return require('../catalog/actions.json') as ActionDoc[];
 }
 
+/** Feed actions return each item's raw rendered HTML (often 50k+ chars) next to structured fields: drop it by default. */
+const HTML_HEAVY = /qzone.*feed|feed.*qzone/;
+function dropHtml(v: any): any {
+  if (Array.isArray(v)) return v.map(dropHtml);
+  if (v && typeof v === 'object') { const o: any = {}; for (const [k, x] of Object.entries(v)) if (k !== 'html') o[k] = dropHtml(x); return o; }
+  return v;
+}
+
 export function registerCatalog() {
   for (const a of loadCatalog()) {
     if (SKIP.has(a.name)) continue;
     const schema = a.inputSchema ?? { type: 'object', properties: {} };
+    const heavy = HTML_HEAVY.test(a.name) && a.readOnly;
+    const advertised = heavy ? { ...schema, properties: { ...(schema.properties ?? {}), include_html: { type: 'boolean', description: 'Also return each feed item\'s raw HTML (large)', default: false } } } : schema;
     defineTool({
       name: toolNameFor(a.name),
       category: CATEGORY_KEYS[a.category ?? ''] ?? 'extended',
       description: describe(a),
-      inputSchema: widen({ ...schema, type: 'object', properties: schema.properties ?? {} }),
+      inputSchema: widen({ ...advertised, type: 'object', properties: advertised.properties ?? {} }),
       readOnly: !!a.readOnly,
       destructive: DESTRUCTIVE.test(a.name),
-      handler: async (args) => onebot.call(a.name, coerce(schema, args ?? {})),
+      handler: async (args) => {
+        const { include_html, ...rest } = args ?? {};
+        const out = await onebot.call(a.name, coerce(schema, heavy ? rest : (args ?? {})));
+        return heavy && !include_html ? dropHtml(out) : out;
+      },
     });
   }
 }

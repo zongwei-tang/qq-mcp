@@ -112,20 +112,16 @@ export function registerQzoneTools() {
       const me = await myUin();
       const d = await qzone({ url: 'photo.qzone.qq.com/cgi-bin/common/cgi_add_album_v2', form: { ...CS, hostUin: me, notice: 0, callbackFun: '_Callback', format: 'fs', plat: 'qzone', source: 'qzone', appid: 4, uin: me, albumname: name, albumdesc: desc, albumclass: 100, priv, question: '', answer: '', whiteList: '', bitmap: '10000000', qzreferrer: ref(me, '/infocenter') } });
       const data = d.data ?? d;
-      return { created: true, id: data.id ?? data.albumid, name };
+      let id = data.id ?? data.albumid;
+      if (!id) { // the CGI does not always echo the id: look it up
+        const l = await qzone({ url: 'photo.qzone.qq.com/fcgi-bin/fcg_list_album_v3', query: { hostUin: me, uin: me, appid: 4, ...CS, source: 'qzone', plat: 'qzone', format: 'jsonp', notice: 0, filter: 1, handset: 4, pageNumModeSort: 40, pageNumModeClass: 15, needUserInfo: 1, idcNum: 4, mode: 2, sortOrder: 1, pageStart: 0, pageNum: 100 } }).catch(() => undefined);
+        const list = l?.data?.albumListModeSort ?? l?.data?.albumList ?? [];
+        id = list.filter((a: any) => a.name === name).sort((a: any, b: any) => (b.createtime ?? 0) - (a.createtime ?? 0))[0]?.id;
+      }
+      return { created: true, id, name };
     },
   });
 
-  defineTool({
-    name: 'qzone_delete_album', category: 'qzone_web', destructive: true,
-    description: 'Delete one of your personal 空间相册 albums (and its photos).',
-    inputSchema: s.obj({ album_id: s.str('Album id') }, ['album_id']),
-    handler: async ({ album_id }) => {
-      const me = await myUin();
-      await qzone({ url: 'photo.qzone.qq.com/cgi-bin/common/cgi_del_album_v2', form: { ...CS, hostUin: me, uin: me, notice: 0, callbackFun: '_Callback', format: 'fs', plat: 'qzone', source: 'qzone', appid: 4, albumid: album_id, qzreferrer: ref(me, '/infocenter') } });
-      return { deleted: true };
-    },
-  });
 
   defineTool({
     name: 'qzone_upload_photo', category: 'qzone_web',
@@ -138,27 +134,18 @@ export function registerQzoneTools() {
       const d = await qzone({
         url: 'https://up.qzone.qq.com/cgi-bin/upload/cgi_upload_image',
         form: {
-          filename: 'filename', zzpanelkey: '', uploadtype: '1', albumtype: '0', exttype: '0', skey: jar.skey, zzpaneluin: a.uin, p_uin: a.uin, uin: a.uin, p_skey: jar.p_skey,
-          output_type: 'json', qzonetoken: '', refer: 'album', charset: 'utf-8', output_charset: 'utf-8', upload_hd: '1', hd_width: '2048', hd_height: '10000', hd_quality: '96',
+          filename: 'filename', zzpanelkey: '', uploadtype: '1', albumtype: '1', exttype: '0', skey: jar.skey, zzpaneluin: a.uin, p_uin: a.uin, uin: a.uin, p_skey: jar.p_skey,
+          output_type: 'jsonhtml', qzonetoken: '', refer: 'album', charset: 'utf-8', output_charset: 'utf-8', upload_hd: '1', hd_width: '2048', hd_height: '10000', hd_quality: '96',
           backUrls: 'http://upbak.photo.qzone.qq.com/cgi-bin/upload/cgi_upload_image', url: `https://up.qzone.qq.com/cgi-bin/upload/cgi_upload_image?g_tk=${a.gtk}`,
           base64: '1', jsonhtml_callback: 'callback', picfile: b64, albumid: album_id, desc, qzreferrer: ref(a.uin, '/main'),
         },
       });
       const data = d.data ?? d;
+      if (!data.lloc && !data.url) throw new Error(`upload failed: ${JSON.stringify(d).slice(0, 300)}`);
       return { uploaded: true, album_id: data.albumid ?? album_id, photo_id: data.lloc, url: data.url, width: data.width, height: data.height };
     },
   });
 
-  defineTool({
-    name: 'qzone_delete_photo', category: 'qzone_web', destructive: true,
-    description: 'Delete a photo from one of your 空间相册 albums.',
-    inputSchema: s.obj({ album_id: s.str('Album id'), photo_id: s.str('Photo id (lloc) from qzone_album_photos') }, ['album_id', 'photo_id']),
-    handler: async ({ album_id, photo_id }) => {
-      const me = await myUin();
-      await qzone({ url: 'photo.qzone.qq.com/cgi-bin/common/cgi_del_photo_multi_v2', form: { ...CS, hostUin: me, uin: me, notice: 0, callbackFun: '_Callback', format: 'fs', plat: 'qzone', source: 'qzone', appid: 4, albumid: album_id, ismultiup: 0, nvip: 1, resetcover: 1, newcover: '', photos: `${photo_id}|1|${album_id}|0|`, emptyrecyclebin: 0, qzreferrer: ref(me, '/infocenter') } });
-      return { deleted: true };
-    },
-  });
 
   defineTool({
     name: 'qzone_like_list', category: 'qzone_web', readOnly: true,
