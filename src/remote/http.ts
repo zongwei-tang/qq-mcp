@@ -12,6 +12,8 @@ export interface ServeOptions {
   port: number;
   token: string;
   buildServer: () => Server;
+  /** Extra GET routes under /<name>/<token>/... (token already checked). Return true if handled. */
+  pages?: (sub: string, req: http.IncomingMessage, res: http.ServerResponse) => Promise<boolean>;
   log?: (line: string) => void;
 }
 
@@ -39,6 +41,12 @@ export function startHttpServer(o: ServeOptions): Promise<http.Server> {
     try {
       const url = new URL(req.url ?? '/', 'http://x');
       if (url.pathname === '/health') { res.writeHead(200, { 'content-type': 'text/plain' }); res.end('ok'); return; }
+      const pg = /^\/login\/([^/]+)(\/.*)?$/.exec(url.pathname);
+      if (pg && o.pages && req.method === 'GET') {
+        if (!tokenMatches(decodeURIComponent(pg[1]), o.token)) { res.writeHead(401); res.end('unauthorized'); return; }
+        if (await o.pages(pg[2] ?? '/', req, res)) return;
+        res.writeHead(404); res.end(); return;
+      }
       // /mcp with "Authorization: Bearer <token>", or /mcp/<token> for clients that only take a URL
       const m = /^\/mcp(?:\/([^/]+))?\/?$/.exec(url.pathname);
       if (!m) { res.writeHead(404); res.end(); return; }

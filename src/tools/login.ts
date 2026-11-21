@@ -66,6 +66,24 @@ async function status() {
   return { logged_in: false, qq_client_running: await qqRunning(), onebot: settings.onebotWs, onebot_error: onebot.lastError || undefined };
 }
 
+/** Click the "刷新" button of an expired QR code (harmless on a live QR). Only on the small login window. */
+async function refreshQr(win: Geo) {
+  if (win.w > 420 || win.h > 560) return; // not the login window
+  await run('xdotool', ['mousemove', String(win.x + Math.round(win.w / 2)), String(win.y + Math.round(win.h * 0.61)), 'click', '1'], { env: env() }).catch(() => {});
+  await new Promise((r) => setTimeout(r, 1500));
+}
+
+/** For the /login web page: current status, plus a PNG of the login window when not logged in. */
+export async function loginSnapshot(refresh: boolean): Promise<{ status: any; png?: Buffer }> {
+  const st = await status();
+  if (st.logged_in) return { status: st };
+  const win = await qqWindow();
+  if (!win) return { status: st };
+  if (refresh) await refreshQr(win);
+  const shot = await screenshot(await qqWindow() ?? win);
+  return { status: st, png: Buffer.from(shot.data, 'base64') };
+}
+
 export function registerLoginTools() {
   defineTool({
     name: 'qq_login_status', category: 'login', readOnly: true,
@@ -88,7 +106,8 @@ export function registerLoginTools() {
       if (!win) {
         return { ...st, message: (await qqRunning()) ? 'QQ is starting but no window is visible yet; call qq_login again in a few seconds (or qq_screenshot).' : 'The QQ client is not running. Call qq_restart_client.' };
       }
-      const shot = await screenshot(win);
+      await refreshQr(win); // always hand out a fresh QR code
+      const shot = await screenshot(await qqWindow() ?? win);
       return { __image: shot, text: `Not logged in yet. This is the QQ login window (screen offset ${win.x},${win.y}, size ${win.w}x${win.h}). Ask the user to scan the QR code with the QQ phone app, then call qq_login with wait=true. If the QR code has expired, click its refresh area with qq_click (coordinates are relative to this image).` };
     },
   });

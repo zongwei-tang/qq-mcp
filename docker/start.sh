@@ -50,7 +50,7 @@ NODE
 chown -R qq:qq "$DATA_DIR" "$XDG_RUNTIME_DIR" 2>/dev/null || true; chown -h qq:qq /app/.config /app/.local /app/.local/share 2>/dev/null || true
 chmod 700 "$XDG_RUNTIME_DIR"
 chmod 1777 /tmp /tmp/.X11-unix || true
-rm -f "/tmp/.X${DISPLAY_NUM}-lock" "/tmp/.X11-unix/X${DISPLAY_NUM}"
+rm -f "/tmp/.X${DISPLAY_NUM}-lock" "/tmp/.X11-unix/X${DISPLAY_NUM}" /tmp/qq-launcher.pid
 find "$XDG_RUNTIME_DIR" -maxdepth 1 -type s -name 'mojo.*.*.sock' -delete 2>/dev/null || true
 
 mkdir -p /var/run/dbus && rm -f /run/dbus/pid

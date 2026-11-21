@@ -76,7 +76,9 @@ async function cli(argv: string[]) {
     const port = Number(process.env.PORT || 8000);
     const host = process.env.HOST || '0.0.0.0';
     loadTools();
-    await startHttpServer({ host, port, token, buildServer, log: (l) => console.log(`[http] ${l}`) });
+    const { loginPages } = await import('./remote/login-page.js');
+    await startHttpServer({ host, port, token, buildServer, pages: loginPages, log: (l) => console.log(`[http] ${l}`) });
+    console.log('login page: /login/<MCP_AUTH_TOKEN>');
     console.log(`qq-mcp ${VERSION} listening on http://${host}:${port}/mcp (${tools.filter(enabled).length} tools)`);
     onebot.start();
     return;
